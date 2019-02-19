@@ -160,6 +160,9 @@ def main():
     stack_inst.synch_init(callback_thread.set_pending_response,
                           callback_thread.clear_pending_responses)
 
+    # Setup project PIXITS
+    autoprojects.gap.set_pixits(ptses[0])
+
     test_cases = autoprojects.gap.test_cases(ptses[0])
     test_cases += autoprojects.gatt.test_cases(ptses[0])
     test_cases += autoprojects.sm.test_cases(ptses[0])
