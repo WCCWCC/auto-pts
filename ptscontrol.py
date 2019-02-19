@@ -263,6 +263,7 @@ class PyPTS:
 
         # list of tuples of methods and arguments to recover after PTS restart
         self._recov = []
+        self._temp_changes = []
         self._recov_in_progress = False
 
         self._temp_workspace_path = None
@@ -296,6 +297,12 @@ class PyPTS:
         if not self._recov_in_progress:
             log("%s %r %r %r", self.add_recov.__name__, func, args, kwds)
             self._recov.append((func, args, kwds))
+
+    def _add_temp_change(self, func, *args, **kwds):
+        """Add function to set temporary value"""
+        if not self._recov_in_progress:
+            log("%s %r %r %r", self._add_temp_change.__name__, func, args, kwds)
+            self._temp_changes.append((func, args, kwds))
 
     def del_recov(self, func, *args, **kwds):
         """Remove function from recovery list"""
@@ -595,6 +602,29 @@ class PyPTS:
 
         return is_active_bool
 
+    def _revert_temp_changes(self):
+        """Recovery default state for test case"""
+
+        if not self._temp_changes:
+            return
+
+        log("%s", self._revert_temp_changes.__name__)
+
+        for tch in self._temp_changes:
+            func = tch[0]
+
+            else if func is self.update_pixit_param:
+                # Look for possible recoverable parameter
+                recovs = filter(lambda x: x[0] is self.set_pixit, self._recov)
+                if not recovs:
+                    continue
+                for item in recovs:
+                    set_project_name_pixit = item[1][:2]
+                    project_name_pixit = tch[1][:2]
+
+                    if (set_project_name_pixit == project_name_pixit):
+                        self._recover_item(item)
+
     def run_test_case(self, project_name, test_case_name):
         """Executes the specified Test Case.
 
@@ -613,6 +643,8 @@ class PyPTS:
 
         log("Starting %s %s %s", self.run_test_case.__name__, project_name,
             test_case_name)
+
+        self._revert_temp_changes()
 
         self._pts_logger.set_test_case_name(test_case_name)
 
@@ -743,8 +775,8 @@ class PyPTS:
         try:
             self._pts.UpdatePixitParam(
                 project_name, param_name, new_param_value)
-            self.add_recov(self.update_pixit_param, project_name, param_name,
-                           new_param_value)
+            self._add_temp_change(self.update_pixit_param, project_name,
+                                  entry_name)
 
         except System.Runtime.InteropServices.COMException as e:
             log(('Exception in UpdatePixitParam "%s", is pixit param already '
